@@ -1,0 +1,392 @@
+<!-- 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f8f9fc">
+    <meta name="description" content="Get quick, helpful answers from our AI customer support assistant.">
+    <title>Support AI — Customer Care</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="{{ url_for('static', filename='script.js') }}" defer></script>
+</head>
+<body>
+    <div class="app-layout">
+
+        <aside class="sidebar" id="sidebar">
+            <a class="brand" href="/" aria-label="Support AI home">
+                <span class="brand-mark">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M12 3L14.5 9.5L21 12L14.5 14.5L12 21L9.5 14.5L3 12L9.5 9.5L12 3Z"
+                              fill="currentColor"/>
+                    </svg>
+                </span>
+                <span class="brand-name">support<span>ai</span></span>
+            </a>
+
+            <button class="new-chat-button" id="sidebar-new-chat" type="button">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M12 5V19M5 12H19" stroke="currentColor"
+                          stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+                New conversation
+            </button>
+
+            <div class="sidebar-label">YOUR ASSISTANT</div>
+
+            <div class="sidebar-item active">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M20 11.5A7.5 7.5 0 0 1 12.5 19H5L6.7 14.8A7.5 7.5 0 1 1 20 11.5Z"
+                          stroke="currentColor" stroke-width="1.6"
+                          stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>Customer support</span>
+                <span class="active-indicator"></span>
+            </div>
+
+            <div class="sidebar-bottom">
+                <div class="help-card">
+                    <div class="help-icon">
+                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <circle cx="12" cy="12" r="9"
+                                    stroke="currentColor" stroke-width="1.6"/>
+                            <path d="M9.5 9A2.5 2.5 0 1 1 13 11.3C12.2 11.8 12 12.3 12 13"
+                                  stroke="currentColor" stroke-width="1.6"
+                                  stroke-linecap="round"/>
+                            <circle cx="12" cy="16" r=".8" fill="currentColor"/>
+                        </svg>
+                    </div>
+                    <strong>Need a human?</strong>
+                    <p>Ask for contact information if you need further assistance.</p>
+                </div>
+
+                <div class="sidebar-footer">
+                    <span class="footer-avatar">AI</span>
+                    <div>
+                        <strong>Support Assistant</strong>
+                        <span>AI-powered help</span>
+                    </div>
+                    <span class="online-dot"></span>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-panel">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <button id="menu-button" class="icon-button menu-button"
+                            type="button" aria-label="Toggle sidebar"
+                            aria-expanded="false">
+                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M4 7H20M4 12H20M4 17H20"
+                                  stroke="currentColor" stroke-width="1.7"
+                                  stroke-linecap="round"/>
+                        </svg>
+                    </button>
+
+                    <div class="mobile-brand">support<span>ai</span></div>
+
+                    <div class="page-heading">
+                        <h1>Customer support</h1>
+                        <p>We're here to help you.</p>
+                    </div>
+                </div>
+
+                <div class="topbar-right">
+                    <div class="availability">
+                        <span class="online-dot"></span>
+                        <span>AI assistant</span>
+                    </div>
+
+                    <button id="reset-button" class="icon-button reset-button"
+                            type="button" title="Start a new conversation"
+                            aria-label="Start a new conversation">
+                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M4 7V3M4 7H8M4.6 7A8 8 0 1 1 4 15"
+                                  stroke="currentColor" stroke-width="1.7"
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"/>
+                        </svg>
+                        <span>New chat</span>
+                    </button>
+                </div>
+            </header>
+
+            <section class="chat-stage" aria-label="Chat conversation">
+                <div id="chat-messages" class="chat-messages"
+                     role="log" aria-live="polite"
+                     aria-relevant="additions text">
+
+                    <div class="welcome" id="welcome">
+                        <div class="welcome-badge">
+                            <span class="welcome-sparkle">✦</span>
+                            <span>YOUR AI SUPPORT ASSISTANT</span>
+                        </div>
+
+                        <div class="welcome-art" aria-hidden="true">
+                            <div class="art-orbit orbit-one"></div>
+                            <div class="art-orbit orbit-two"></div>
+                            <div class="art-core">
+                                <svg viewBox="0 0 48 48" fill="none">
+                                    <path d="M24 5L29.5 18.5L43 24L29.5 29.5L24 43L18.5 29.5L5 24L18.5 18.5L24 5Z"
+                                          fill="currentColor"/>
+                                </svg>
+                            </div>
+                            <span class="art-star star-one">✦</span>
+                            <span class="art-star star-two">✧</span>
+                        </div>
+
+                        <h2>How can we help<br class="desktop-break"> you today?</h2>
+
+                        <p class="welcome-description">
+                            Have a question or need a hand? Start a conversation
+                            and let our AI assistant help you find your way.
+                        </p>
+
+                        <div class="suggestions-heading">HERE ARE A FEW IDEAS</div>
+
+                        <div class="suggestions">
+                            <button class="suggestion" type="button"
+                                    data-message="What can you help me with?">
+                                <span class="suggestion-icon violet">
+                                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                        <path d="M12 3L14 9L20 12L14 14L12 21L10 14L4 12L10 9L12 3Z"
+                                              stroke="currentColor" stroke-width="1.5"
+                                              stroke-linejoin="round"/>
+                                    </svg>
+                                </span>
+                                <span class="suggestion-copy">
+                                    <strong>Explore what you can do</strong>
+                                    <span>Discover how I can help you</span>
+                                </span>
+                                <span class="suggestion-arrow">↗</span>
+                            </button>
+
+                            <button class="suggestion" type="button"
+                                    data-message="How can I contact customer support?">
+                                <span class="suggestion-icon blue">
+                                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                        <path d="M21 11.5A8.5 8.5 0 0 1 12.5 20H5L6.8 15.7A8.5 8.5 0 1 1 21 11.5Z"
+                                              stroke="currentColor" stroke-width="1.6"
+                                              stroke-linejoin="round"/>
+                                    </svg>
+                                </span>
+                                <span class="suggestion-copy">
+                                    <strong>Talk to our support team</strong>
+                                    <span>Find out how to reach us</span>
+                                </span>
+                                <span class="suggestion-arrow">↗</span>
+                            </button>
+
+                            <button class="suggestion" type="button"
+                                    data-message="I need help with an issue.">
+                                <span class="suggestion-icon orange">
+                                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                        <circle cx="12" cy="12" r="9"
+                                                stroke="currentColor" stroke-width="1.6"/>
+                                        <path d="M12 8V12M12 16H12.01"
+                                              stroke="currentColor" stroke-width="1.8"
+                                              stroke-linecap="round"/>
+                                    </svg>
+                                </span>
+                                <span class="suggestion-copy">
+                                    <strong>Resolve an issue</strong>
+                                    <span>Tell me what went wrong</span>
+                                </span>
+                                <span class="suggestion-arrow">↗</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <div id="error-banner" class="error-banner" role="alert" hidden></div>
+
+            <footer class="composer-area">
+                <form id="chat-form" class="chat-form">
+                    <label class="visually-hidden" for="message-input">
+                        Your message
+                    </label>
+
+                    <textarea id="message-input" name="message"
+                              placeholder="Message your AI assistant..."
+                              rows="1" maxlength="2000" required></textarea>
+
+                    <div class="composer-bottom">
+                        <span class="composer-hint">
+                            <span class="keyboard-key">↵</span>
+                            Enter to send · Shift + Enter for a new line
+                        </span>
+
+                        <button id="send-button" class="send-button"
+                                type="submit" aria-label="Send message"
+                                title="Send message">
+                            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <path d="M12 19V5M5 12L12 5L19 12"
+                                      stroke="currentColor" stroke-width="1.9"
+                                      stroke-linecap="round"
+                                      stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    </div>
+                </form>
+
+                <p class="privacy-note">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <rect x="5" y="10" width="14" height="11" rx="2"
+                              stroke="currentColor" stroke-width="1.5"/>
+                        <path d="M8 10V7A4 4 0 0 1 16 7V10"
+                              stroke="currentColor" stroke-width="1.5"/>
+                    </svg>
+                    AI can make mistakes. Please don't share passwords or sensitive information.
+                </p>
+            </footer>
+        </main>
+    </div>
+
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+</body>
+</html> -->
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#101014">
+
+    <title>Support AI — Customer Care</title>
+
+    <link rel="icon" type="image/svg+xml"
+          href="{{ url_for('static', filename='favicon.svg') }}">
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='style.css') }}">
+
+    <link rel="icon" type="image/png" href="https://your-website.com/logo.png">      
+</head>
+
+<body>
+    <main class="app">
+
+        <header class="topbar">
+            <a class="brand" href="/">
+                <span class="brand-icon">S</span>
+                <span>support<span class="brand-light">ai</span></span>
+            </a>
+
+            <div class="topbar-right">
+                <span class="status">
+                    <span class="status-dot"></span>
+                    AI assistant online
+                </span>
+
+                <button id="reset-button" class="new-chat-button" type="button">
+                    <span>+</span> New chat
+                </button>
+            </div>
+        </header>
+
+        <section class="chat-area">
+            <div id="chat-messages" class="chat-messages">
+
+                <div class="welcome">
+                    <div class="welcome-orb">
+                        <span></span>
+                    </div>
+
+                    <p class="eyebrow">YOUR AI SUPPORT ASSISTANT</p>
+
+                    <h1>How can we<br><span>help you today?</span></h1>
+
+                    <p class="welcome-description">
+                        Have a question? Need assistance?
+                        Start a conversation and we'll help you find the answer.
+                    </p>
+
+                    <div class="suggestions">
+                        <button class="suggestion" type="button">
+                            <span class="suggestion-icon">↗</span>
+                            <span>
+                                <strong>Product information</strong>
+                                <small>Learn more about our products and services</small>
+                            </span>
+                        </button>
+
+                        <button class="suggestion" type="button">
+                            <span class="suggestion-icon">?</span>
+                            <span>
+                                <strong>Frequently asked questions</strong>
+                                <small>Get answers to common questions</small>
+                            </span>
+                        </button>
+
+                        <button class="suggestion" type="button">
+                            <span class="suggestion-icon">◎</span>
+                            <span>
+                                <strong>Account assistance</strong>
+                                <small>Get help with your account</small>
+                            </span>
+                        </button>
+
+                        <button class="suggestion" type="button">
+                            <span class="suggestion-icon">✳</span>
+                            <span>
+                                <strong>Speak to support</strong>
+                                <small>Find out how to reach our support team</small>
+                            </span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <button class="suggestion"
+        type="button"
+        data-message="Tell me about your products and services.">
+    <span class="suggestion-icon">↗</span>
+    <span>
+        <strong>Product information</strong>
+        <small>Learn more about our products and services</small>
+    </span>
+</button>
+
+            <div class="composer-area">
+                <div id="error-banner" hidden></div>
+
+                <form id="chat-form" class="composer">
+                    <textarea
+                        id="message-input"
+                        name="message"
+                        placeholder="Ask us anything..."
+                        rows="1"
+                        autocomplete="off"
+                        required
+                    ></textarea>
+
+                    <button id="send-button" type="submit" aria-label="Send message">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 19V5M5 12l7-7 7 7"/>
+                        </svg>
+                    </button>
+                </form>
+
+                <p class="composer-note">
+                    AI responses can make mistakes. Please verify important information.
+                </p>
+            </div>
+        </section>
+
+    </main>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
+
