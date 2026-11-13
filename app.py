@@ -233,69 +233,25 @@ async def generate_with_mcp(messages_history):
     mcp_tools = await _list_mcp_tools()
     nvidia_tools = _mcp_tools_to_nvidia(mcp_tools)
 
-    # 1. Initial call to NVIDIA using the official OpenAI SDK
     def _initial_call():
         return nvidia_client.chat.completions.create(
             model=MODEL_NAME,
             messages=messages_history,
             temperature=0.3,
             top_p=0.95,
-            max_tokens=1024,
+            max_tokens=512,             # Keep the final answer short
             tools=nvidia_tools if nvidia_tools else None,
             parallel_tool_calls=True,
             seed=42,
-            stream=False,  # Must be False to parse tool calls cleanly
-            # Disable heavy reasoning to prevent Gunicorn timeouts
-            extra_body={"chat_template_kwargs": {"enable_thinking": True}}
+            stream=False,
+            # Force Nemotron to think efficiently so it doesn't take 2 minutes
+            extra_body={
+                "chat_template_kwargs": {
+                    "enable_thinking": True,
+                    "thinking_budget": 1024   # <--- LIMIT THE THINKING TOKENS
+                }
+            }
         )
-
-    response = await asyncio.to_thread(_initial_call)
-    message = response.choices[0].message
-
-    # 2. Manual tool-call loop (max 3 rounds)
-    for _ in range(3):
-        if not message.tool_calls:
-            break
-
-        # Append the assistant's tool call request to history
-        messages_history.append(message)
-
-        # Execute tools
-        for tool_call in message.tool_calls:
-            fn_name = tool_call.function.name
-            fn_args = json.loads(tool_call.function.arguments)
-            
-            try:
-                result_text = await _call_mcp_tool(fn_name, fn_args)
-            except Exception as exc:
-                logger.exception("MCP tool call failed: %s", fn_name)
-                result_text = f"Tool error: {exc}"
-
-            messages_history.append({
-                "role": "tool",
-                "tool_call_id": tool_call.id,
-                "content": result_text
-            })
-
-        # Call NVIDIA again with the tool results
-        def _follow_up_call():
-            return nvidia_client.chat.completions.create(
-                model=MODEL_NAME,
-                messages=messages_history,
-                temperature=0.3,
-                top_p=0.95,
-                max_tokens=1024,
-                tools=nvidia_tools if nvidia_tools else None,
-                parallel_tool_calls=True,
-                seed=42,
-                stream=False,
-                extra_body={"chat_template_kwargs": {"enable_thinking": False}}
-            )
-
-        response = await asyncio.to_thread(_follow_up_call)
-        message = response.choices[0].message
-
-    return message.content or ""
 
 
 # --------------------------------------------------
