@@ -359,3 +359,5 @@ if (!chatForm || !messageInput || !messagesContainer || !sendButton || !resetBut
 
     messageInput.focus();
 }
+
+
