@@ -865,6 +865,7 @@ import secrets
 import time
 import pathlib
 import json
+import asyncio
 from collections import deque
 from threading import Lock
 
@@ -911,11 +912,12 @@ MODEL_NAME = os.getenv(
     "nvidia/nemotron-3.5-super-vl-120b-a12b"
 ).strip()
 
-# Initialize OpenAI client pointing to NVIDIA
+# Initialize OpenAI client pointing to NVIDIA (120s timeout for heavy models)
 nvidia_client = (
     OpenAI(
         base_url="https://integrate.api.nvidia.com/v1",
         api_key=API_KEY,
+        timeout=120.0,
     )
     if API_KEY else None
 )
@@ -1097,16 +1099,18 @@ async def generate_with_mcp(messages_history):
         return nvidia_client.chat.completions.create(
             model=MODEL_NAME,
             messages=messages_history,
-            temperature=1,
+            temperature=0.3,
             top_p=0.95,
-            max_tokens=2048,
+            max_tokens=1024,
             tools=nvidia_tools if nvidia_tools else None,
             parallel_tool_calls=True,
             seed=42,
-            stream=False  # We need the full response to parse tool calls
+            stream=False,  # Must be False to parse tool calls cleanly
+            # Disable heavy reasoning to prevent Gunicorn timeouts
+            extra_body={"chat_template_kwargs": {"enable_thinking": False}}
         )
 
-    response = await __import__('asyncio').to_thread(_initial_call)
+    response = await asyncio.to_thread(_initial_call)
     message = response.choices[0].message
 
     # 2. Manual tool-call loop (max 3 rounds)
@@ -1139,16 +1143,17 @@ async def generate_with_mcp(messages_history):
             return nvidia_client.chat.completions.create(
                 model=MODEL_NAME,
                 messages=messages_history,
-                temperature=1,
+                temperature=0.3,
                 top_p=0.95,
-                max_tokens=2048,
+                max_tokens=1024,
                 tools=nvidia_tools if nvidia_tools else None,
                 parallel_tool_calls=True,
                 seed=42,
-                stream=False
+                stream=False,
+                extra_body={"chat_template_kwargs": {"enable_thinking": False}}
             )
 
-        response = await __import__('asyncio').to_thread(_follow_up_call)
+        response = await asyncio.to_thread(_follow_up_call)
         message = response.choices[0].message
 
     return message.content or ""
