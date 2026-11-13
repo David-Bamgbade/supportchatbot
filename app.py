@@ -1,6 +1,5 @@
-import logging
 import os
-import pathlib
+import logging
 import secrets
 import time
 from collections import deque
@@ -10,10 +9,6 @@ from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request, session
 from google import genai
 from google.genai import errors, types
-from fastmcp import Client as MCPClient
-
-# Import the background event loop runner
-from async_runner import runner
 
 load_dotenv()
 
@@ -45,24 +40,16 @@ logger = logging.getLogger(__name__)
 
 API_KEY = (
     os.getenv("API_KEY")
-    or os.getenv("GEMINI_API_KEY")
+    or os.getenv("GEMINI_MODEL")
     or ""
 ).strip()
 
 MODEL_NAME = os.getenv(
     "GEMINI_MODEL",
-    "gemini-2.0-flash"
+    "gemini-3.6-flash"
 ).strip()
 
 client = genai.Client(api_key=API_KEY) if API_KEY else None
-
-# --------------------------------------------------
-# MCP configuration
-# --------------------------------------------------
-
-MCP_SERVER_PATH = pathlib.Path(
-    os.getenv("MCP_SERVER_PATH", "time_server.py")
-)
 
 # --------------------------------------------------
 # Conversation settings
@@ -89,14 +76,6 @@ YOUR RESPONSIBILITIES:
 - Explain solutions in simple, practical steps.
 - Ask clarifying questions when necessary.
 - Respond naturally to greetings and follow-up questions.
-
-TOOLS:
-- You have access to a real-time clock tool called get_current_time.
-- Use it whenever the user asks about the current time or date,
-  in any timezone.
-- Never guess or invent the current time or date.
-- If the user does not specify a timezone, use "Africa/Lagos" or
-  ask which timezone they mean.
 
 COMMUNICATION:
 - Be patient, empathetic, respectful and professional.
@@ -142,6 +121,7 @@ FORMATTING RULES:
 - Do not use Markdown headings or code blocks.
 - Use simple paragraphs and numbered lists when necessary.
 - Responses should look natural in a customer service chat interface.
+
 """
 
 # --------------------------------------------------
@@ -178,6 +158,7 @@ def get_conversation(conversation_id):
 # --------------------------------------------------
 
 def api_error_response(exc):
+    # Log useful diagnostics without logging credentials.
     logger.error(
         "Gemini API error: code=%s, message=%s",
         getattr(exc, "code", "unknown"),
@@ -215,128 +196,6 @@ def api_error_response(exc):
 
 
 # --------------------------------------------------
-# MCP helpers
-# --------------------------------------------------
-
-_SCHEMA_STRIP_KEYS = {
-    "additionalProperties",
-    "$schema",
-    "$id",
-    "$defs",
-    "definitions",
-    "title",
-    "examples",
-    "default",
-}
-
-
-def _clean_schema(schema):
-    """Strip JSON-Schema keys Gemini's FunctionDeclaration rejects."""
-    if isinstance(schema, dict):
-        return {
-            k: _clean_schema(v)
-            for k, v in schema.items()
-            if k not in _SCHEMA_STRIP_KEYS
-        }
-    if isinstance(schema, list):
-        return [_clean_schema(item) for item in schema]
-    return schema
-
-
-def _get_tool_schema(t):
-    """Read input schema across FastMCP versions (inputSchema vs input_schema)."""
-    schema = getattr(t, "input_schema", None)
-    if schema is None:
-        schema = getattr(t, "inputSchema", None)
-    return schema or {"type": "object", "properties": {}}
-
-
-async def _list_mcp_tools():
-    async with MCPClient(MCP_SERVER_PATH) as mcp_client:
-        return await mcp_client.list_tools()
-
-
-async def _call_mcp_tool(tool_name, arguments):
-    async with MCPClient(MCP_SERVER_PATH) as mcp_client:
-        result = await mcp_client.call_tool(tool_name, arguments)
-        return result.text if hasattr(result, "text") else str(result)
-
-
-def _mcp_tools_to_gemini(mcp_tools):
-    declarations = []
-    for t in mcp_tools:
-        declarations.append(
-            types.FunctionDeclaration(
-                name=t.name,
-                description=t.description or "",
-                parameters=_clean_schema(_get_tool_schema(t)),
-            )
-        )
-    return [types.Tool(function_declarations=declarations)]
-
-
-# --------------------------------------------------
-# Gemini + MCP call loop
-# --------------------------------------------------
-
-async def generate_with_mcp(contents):
-    mcp_tools = await _list_mcp_tools()
-    gemini_tools = _mcp_tools_to_gemini(mcp_tools)
-
-    async def _call_gemini(contents_payload):
-        return await client.aio.models.generate_content(
-            model=MODEL_NAME,
-            contents=contents_payload,
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_INSTRUCTIONS,
-                temperature=0.3,
-                max_output_tokens=700,
-                tools=gemini_tools,
-            ),
-        )
-
-    response = await _call_gemini(contents)
-
-    # Manual tool-call loop (max 3 rounds to avoid runaway)
-    for _ in range(3):
-        candidate = response.candidates[0] if response.candidates else None
-        if not candidate or not candidate.content:
-            break
-
-        calls = [
-            p.function_call
-            for p in candidate.content.parts
-            if getattr(p, "function_call", None)
-        ]
-        if not calls:
-            break
-
-        tool_result_parts = []
-        for fc in calls:
-            try:
-                result_text = await _call_mcp_tool(fc.name, dict(fc.args or {}))
-            except Exception as exc:
-                logger.exception("MCP tool call failed: %s", fc.name)
-                result_text = f"Tool error: {exc}"
-
-            tool_result_parts.append(
-                types.Part.from_function_response(
-                    name=fc.name,
-                    response={"result": result_text},
-                )
-            )
-
-        contents.append(candidate.content)
-        contents.append(
-            types.Content(role="user", parts=tool_result_parts)
-        )
-
-        response = await _call_gemini(contents)
-
-    return response
-
-
-# --------------------------------------------------
 # Routes
 # --------------------------------------------------
 
@@ -351,7 +210,6 @@ def health():
         "status": "ok",
         "model": MODEL_NAME,
         "api_configured": bool(client),
-        "mcp_server": str(MCP_SERVER_PATH),
     })
 
 
@@ -411,25 +269,37 @@ def chat():
         contents.append(
             types.Content(
                 role=item["role"],
-                parts=[types.Part.from_text(text=item["text"])],
+                parts=[
+                    types.Part.from_text(text=item["text"])
+                ],
             )
         )
 
     contents.append(
         types.Content(
             role="user",
-            parts=[types.Part.from_text(text=message)],
+            parts=[
+                types.Part.from_text(text=message)
+            ],
         )
     )
 
     try:
-        # Submit the coroutine to the persistent background event loop
-        response = runner.run(generate_with_mcp(contents))
+        response = client.models.generate_content(
+            model=MODEL_NAME,
+            contents=contents,
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_INSTRUCTIONS,
+                temperature=0.3,
+                max_output_tokens=700,
+            ),
+        )
 
         answer = response.text
 
         if not answer or not answer.strip():
             logger.warning("Gemini returned an empty response.")
+
             return jsonify({
                 "error": (
                     "The AI could not generate a response. "
@@ -441,26 +311,35 @@ def chat():
 
     except errors.APIError as exc:
         error_message, status_code = api_error_response(exc)
-        return jsonify({"error": error_message}), status_code
+
+        return jsonify({
+            "error": error_message
+        }), status_code
 
     except Exception:
         logger.exception("Unexpected chatbot error")
+
         return jsonify({
             "error": "An unexpected error occurred. Please try again."
         }), 500
 
+    # Store messages only after a successful response.
     with conversation_lock:
         conversation["messages"].append({
             "role": "user",
             "text": message,
         })
+
         conversation["messages"].append({
             "role": "model",
             "text": answer,
         })
+
         conversation["updated_at"] = time.time()
 
-    return jsonify({"reply": answer})
+    return jsonify({
+        "reply": answer
+    })
 
 
 @app.post("/api/reset")
@@ -473,7 +352,9 @@ def reset_chat():
 
     session["conversation_id"] = secrets.token_urlsafe(32)
 
-    return jsonify({"message": "Conversation cleared."})
+    return jsonify({
+        "message": "Conversation cleared."
+    })
 
 
 # --------------------------------------------------
